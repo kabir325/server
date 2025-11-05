@@ -170,7 +170,7 @@ class SmartModelManager:
         self.available_models = [
             ModelInfo("llama3.2:1b", 1_000_000_000, 2.0, 0),
             ModelInfo("llama3.2:3b", 3_000_000_000, 6.0, 0),
-            ModelInfo("llama3.2:8b", 8_000_000_000, 16.0, 0),
+            ModelInfo("llama3.1:8b", 8_000_000_000, 16.0, 0),  # Updated to 3.1
         ]
         logger.info("Using default model set")
     
