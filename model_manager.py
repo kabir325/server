@@ -21,6 +21,7 @@ class ModelInfo:
     parameters: int  # Number of parameters (e.g., 1B = 1000000000)
     size_gb: float   # Model size in GB
     complexity_score: int  # 1-10 scale for computational requirements
+    supports_vision: bool = False  # Whether model supports image input
     
     def __post_init__(self):
         """Calculate complexity score based on parameters"""
@@ -30,6 +31,8 @@ class ModelInfo:
             elif self.parameters >= 30_000_000_000:  # 30B+
                 self.complexity_score = 9
             elif self.parameters >= 13_000_000_000:  # 13B+
+                self.complexity_score = 8
+            elif self.parameters >= 11_000_000_000:  # 11B+
                 self.complexity_score = 8
             elif self.parameters >= 8_000_000_000:   # 8B+
                 self.complexity_score = 7
@@ -168,11 +171,11 @@ class SmartModelManager:
     def _use_default_models(self) -> None:
         """Use default model set if discovery fails"""
         self.available_models = [
-            ModelInfo("llama3.2:1b", 1_000_000_000, 2.0, 0),
-            ModelInfo("llama3.2:3b", 3_000_000_000, 6.0, 0),
-            ModelInfo("llama3.1:8b", 8_000_000_000, 16.0, 0),  # Updated to 3.1
+            ModelInfo("hf.co/mradermacher/Dhenu2-In-Llama3.2-3B-Instruct-GGUF:Q4_K_M", 3_000_000_000, 6.0, 0, supports_vision=False),
+            ModelInfo("hf.co/mradermacher/Dhenu2-In-Llama3.1-8B-Instruct-GGUF:Q4_K_M", 8_000_000_000, 16.0, 0, supports_vision=False),
+            ModelInfo("llama3.2-vision", 11_000_000_000, 22.0, 0, supports_vision=True),
         ]
-        logger.info("Using default model set")
+        logger.info("Using default model set for farming assistant with vision support")
     
     def assign_models_to_clients(self, clients: Dict[str, Dict]) -> Dict[str, str]:
         """

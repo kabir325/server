@@ -98,6 +98,7 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
                     model_pb.parameters = model_info.parameters
                     model_pb.size_gb = model_info.size_gb
                     model_pb.complexity_score = model_info.complexity_score
+                    model_pb.supports_vision = model_info.supports_vision
                 
                 return load_balancer_pb2.RegistrationResponse(
                     success=True,
@@ -127,7 +128,8 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
                     name=model.name,
                     parameters=model.parameters,
                     size_gb=model.size_gb,
-                    complexity_score=model.complexity_score
+                    complexity_score=model.complexity_score,
+                    supports_vision=model.supports_vision
                 )
                 models.append(model_pb)
             
@@ -208,7 +210,8 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
         """Process distributed AI request across all clients"""
         try:
             prompt = request.prompt
-            response_text = self.process_distributed_query(prompt)
+            images = list(request.images) if request.images else []
+            response_text = self.process_distributed_query(prompt, images)
             
             return load_balancer_pb2.AIResponse(
                 request_id=request.request_id,
@@ -243,13 +246,18 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
             active_models=active_models
         )
     
-    def process_distributed_query(self, prompt: str) -> str:
+    def process_distributed_query(self, prompt: str, images: List[str] = None) -> str:
         """Process a query across all connected clients with smart load balancing"""
         if not self.clients:
             return "❌ No clients connected. Please connect clients first."
         
+        if images is None:
+            images = []
+        
         logger.info(f"🔄 Processing query: '{prompt}'")
         logger.info(f"📊 Smart distribution to {len(self.clients)} clients")
+        if images:
+            logger.info(f"🖼️  Processing with {len(images)} images")
         
         # Show smart assignments
         model_groups = {}
@@ -279,14 +287,25 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
                 channel = grpc.insecure_channel(client_address)
                 stub = load_balancer_pb2_grpc.LoadBalancerStub(channel)
                 
+                # Check if model supports vision
+                model_info = self.model_manager.get_model_info(client_info['assigned_model'])
+                supports_vision = model_info.supports_vision if model_info else False
+                
+                # Only send images to vision-capable models
+                client_images = images if (supports_vision and images) else []
+                
                 ai_request = load_balancer_pb2.AIRequest(
                     request_id=request_id,
                     prompt=prompt,
                     assigned_model=client_info['assigned_model'],
-                    timestamp=int(time.time())
+                    timestamp=int(time.time()),
+                    images=client_images
                 )
                 
-                logger.info(f"📤 Sending to {client_id} ({client_info['assigned_model']})...")
+                if client_images:
+                    logger.info(f"📤 Sending to {client_id} ({client_info['assigned_model']}) with {len(client_images)} images...")
+                else:
+                    logger.info(f"📤 Sending to {client_id} ({client_info['assigned_model']})...")
                 
                 # Send request asynchronously (no timeout)
                 response = stub.ProcessAIRequest(ai_request)
@@ -377,21 +396,31 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
     
     def _get_best_local_model(self) -> str:
         """Get the best available local model for summarization"""
-        # Try to use the most complex model available
+        # Use gemma3:1b for fast summarization
+        summarization_model = "gemma3:1b"
+        
+        # Check if the model exists in available models
+        for model in self.model_manager.available_models:
+            if model.name == summarization_model:
+                return summarization_model
+        
+        # Fallback to the most complex model available
         if self.model_manager.available_models:
             best_model = max(self.model_manager.available_models, key=lambda x: x.complexity_score)
             return best_model.name
-        return "llama3.2:3b"  # fallback
+        
+        return "gemma3:1b"  # final fallback
     
     def _format_final_response(self, responses: List[Dict], summary: str, summary_method: str) -> str:
-        """Format the final response with detailed information"""
-        result = f"🎯 SMART DISTRIBUTED AI RESPONSE\n"
-        result += f"{'='*60}\n\n"
+        """Format the final response with detailed information in a professional structure"""
         
-        result += f"📊 INTELLIGENT PROCESSING DETAILS:\n"
-        result += f"Total clients: {len(responses)}\n"
-        result += f"Models used: {len(set(r['model'] for r in responses))}\n"
-        result += f"Summary method: {summary_method}\n\n"
+        # Main answer first (most important)
+        result = f"{summary}\n\n"
+        
+        # Processing metadata in a clean, collapsible format
+        result += f"\n{'='*80}\n"
+        result += f"PROCESSING_DETAILS_START\n"
+        result += f"{'='*80}\n\n"
         
         # Group by model
         model_groups = {}
@@ -401,25 +430,29 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
                 model_groups[model] = []
             model_groups[model].append(resp)
         
-        result += f"🤖 MODEL DISTRIBUTION:\n"
+        # Model distribution table
+        result += f"📊 System Performance\n\n"
+        result += f"Models Used: {len(set(r['model'] for r in responses))}\n"
+        result += f"Total Clients: {len(responses)}\n"
+        result += f"Summary Method: {summary_method}\n\n"
+        
+        result += f"🤖 Model Performance:\n\n"
         for model, model_responses in model_groups.items():
             model_info = self.model_manager.get_model_info(model)
             params = self._format_parameters(model_info.parameters) if model_info else "Unknown"
             avg_time = sum(r['processing_time'] for r in model_responses) / len(model_responses)
             
-            result += f"  • {model} ({params}): {len(model_responses)} clients, avg {avg_time:.1f}s\n"
+            result += f"  • {model} ({params})\n"
+            result += f"    Clients: {len(model_responses)} | Avg Time: {avg_time:.1f}s\n"
             for resp in model_responses:
-                result += f"    - {resp['client_id']}: {resp['processing_time']:.1f}s\n"
+                result += f"    └─ {resp['client_id']}: {resp['processing_time']:.1f}s\n"
+            result += f"\n"
         
         total_time = sum(resp['processing_time'] for resp in responses)
-        result += f"\nTotal processing time: {total_time:.1f}s\n"
-        result += f"Average per client: {total_time/len(responses):.1f}s\n\n"
+        result += f"⏱️  Total Processing: {total_time:.1f}s | Per Client: {total_time/len(responses):.1f}s\n\n"
         
-        result += f"🧠 UNIFIED INTELLIGENT RESPONSE:\n"
-        result += f"{summary}\n\n"
-        
-        result += f"{'='*60}\n"
-        result += f"✅ Smart fog computing load balancing completed successfully!"
+        result += f"{'='*80}\n"
+        result += f"✅ Distributed AI processing completed successfully\n"
         
         return result
     

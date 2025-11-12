@@ -56,7 +56,13 @@ class ChatManager:
     
     def get_all_sessions(self, limit: int = 50) -> List[Dict]:
         """Get all sessions"""
-        sessions = list(self.sessions.values())
+        sessions = []
+        for session in self.sessions.values():
+            session_copy = session.copy()
+            session_copy['message_count'] = len(session['messages'])
+            # Don't include full messages in list view
+            session_copy.pop('messages', None)
+            sessions.append(session_copy)
         sessions.sort(key=lambda x: x['updated_at'], reverse=True)
         return sessions[:limit]
     

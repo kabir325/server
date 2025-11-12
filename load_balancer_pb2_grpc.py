@@ -65,30 +65,10 @@ class LoadBalancerStub(object):
                 request_serializer=load__balancer__pb2.Empty.SerializeToString,
                 response_deserializer=load__balancer__pb2.ReassignmentResponse.FromString,
                 _registered_method=True)
-        self.AddDocument = channel.unary_unary(
-                '/loadbalancer.LoadBalancer/AddDocument',
-                request_serializer=load__balancer__pb2.AddDocumentRequest.SerializeToString,
-                response_deserializer=load__balancer__pb2.AddDocumentResponse.FromString,
-                _registered_method=True)
-        self.SearchDocuments = channel.unary_unary(
-                '/loadbalancer.LoadBalancer/SearchDocuments',
-                request_serializer=load__balancer__pb2.SearchDocumentsRequest.SerializeToString,
-                response_deserializer=load__balancer__pb2.SearchDocumentsResponse.FromString,
-                _registered_method=True)
-        self.CreateChatSession = channel.unary_unary(
-                '/loadbalancer.LoadBalancer/CreateChatSession',
-                request_serializer=load__balancer__pb2.CreateChatSessionRequest.SerializeToString,
-                response_deserializer=load__balancer__pb2.CreateChatSessionResponse.FromString,
-                _registered_method=True)
-        self.GetChatSessions = channel.unary_unary(
-                '/loadbalancer.LoadBalancer/GetChatSessions',
-                request_serializer=load__balancer__pb2.GetChatSessionsRequest.SerializeToString,
-                response_deserializer=load__balancer__pb2.GetChatSessionsResponse.FromString,
-                _registered_method=True)
-        self.GetChatHistory = channel.unary_unary(
-                '/loadbalancer.LoadBalancer/GetChatHistory',
-                request_serializer=load__balancer__pb2.GetChatHistoryRequest.SerializeToString,
-                response_deserializer=load__balancer__pb2.GetChatHistoryResponse.FromString,
+        self.ProcessRequest = channel.unary_unary(
+                '/loadbalancer.LoadBalancer/ProcessRequest',
+                request_serializer=load__balancer__pb2.AIRequest.SerializeToString,
+                response_deserializer=load__balancer__pb2.AIResponse.FromString,
                 _registered_method=True)
 
 
@@ -138,34 +118,9 @@ class LoadBalancerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def AddDocument(self, request, context):
-        """RAG operations
+    def ProcessRequest(self, request, context):
+        """Process distributed request (server-side only)
         """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def SearchDocuments(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def CreateChatSession(self, request, context):
-        """Chat history operations
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def GetChatSessions(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def GetChatHistory(self, request, context):
-        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -203,30 +158,10 @@ def add_LoadBalancerServicer_to_server(servicer, server):
                     request_deserializer=load__balancer__pb2.Empty.FromString,
                     response_serializer=load__balancer__pb2.ReassignmentResponse.SerializeToString,
             ),
-            'AddDocument': grpc.unary_unary_rpc_method_handler(
-                    servicer.AddDocument,
-                    request_deserializer=load__balancer__pb2.AddDocumentRequest.FromString,
-                    response_serializer=load__balancer__pb2.AddDocumentResponse.SerializeToString,
-            ),
-            'SearchDocuments': grpc.unary_unary_rpc_method_handler(
-                    servicer.SearchDocuments,
-                    request_deserializer=load__balancer__pb2.SearchDocumentsRequest.FromString,
-                    response_serializer=load__balancer__pb2.SearchDocumentsResponse.SerializeToString,
-            ),
-            'CreateChatSession': grpc.unary_unary_rpc_method_handler(
-                    servicer.CreateChatSession,
-                    request_deserializer=load__balancer__pb2.CreateChatSessionRequest.FromString,
-                    response_serializer=load__balancer__pb2.CreateChatSessionResponse.SerializeToString,
-            ),
-            'GetChatSessions': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetChatSessions,
-                    request_deserializer=load__balancer__pb2.GetChatSessionsRequest.FromString,
-                    response_serializer=load__balancer__pb2.GetChatSessionsResponse.SerializeToString,
-            ),
-            'GetChatHistory': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetChatHistory,
-                    request_deserializer=load__balancer__pb2.GetChatHistoryRequest.FromString,
-                    response_serializer=load__balancer__pb2.GetChatHistoryResponse.SerializeToString,
+            'ProcessRequest': grpc.unary_unary_rpc_method_handler(
+                    servicer.ProcessRequest,
+                    request_deserializer=load__balancer__pb2.AIRequest.FromString,
+                    response_serializer=load__balancer__pb2.AIResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -403,7 +338,7 @@ class LoadBalancer(object):
             _registered_method=True)
 
     @staticmethod
-    def AddDocument(request,
+    def ProcessRequest(request,
             target,
             options=(),
             channel_credentials=None,
@@ -416,117 +351,9 @@ class LoadBalancer(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/loadbalancer.LoadBalancer/AddDocument',
-            load__balancer__pb2.AddDocumentRequest.SerializeToString,
-            load__balancer__pb2.AddDocumentResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def SearchDocuments(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/loadbalancer.LoadBalancer/SearchDocuments',
-            load__balancer__pb2.SearchDocumentsRequest.SerializeToString,
-            load__balancer__pb2.SearchDocumentsResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def CreateChatSession(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/loadbalancer.LoadBalancer/CreateChatSession',
-            load__balancer__pb2.CreateChatSessionRequest.SerializeToString,
-            load__balancer__pb2.CreateChatSessionResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def GetChatSessions(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/loadbalancer.LoadBalancer/GetChatSessions',
-            load__balancer__pb2.GetChatSessionsRequest.SerializeToString,
-            load__balancer__pb2.GetChatSessionsResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def GetChatHistory(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/loadbalancer.LoadBalancer/GetChatHistory',
-            load__balancer__pb2.GetChatHistoryRequest.SerializeToString,
-            load__balancer__pb2.GetChatHistoryResponse.FromString,
+            '/loadbalancer.LoadBalancer/ProcessRequest',
+            load__balancer__pb2.AIRequest.SerializeToString,
+            load__balancer__pb2.AIResponse.FromString,
             options,
             channel_credentials,
             insecure,

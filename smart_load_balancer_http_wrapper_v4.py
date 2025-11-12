@@ -84,23 +84,43 @@ def process_query():
         if session_id and chat_manager:
             chat_manager.add_message(session_id, 'user', prompt, images)
         
+        # System prompt for farming assistant
+        system_prompt = (
+            "You are a highly knowledgeable and helpful assistant for farmers. "
+            "You specialize in answering questions related to Wheat and Maize crops. "
+            "Your goal is to provide accurate, clear, and practical advice on farming practices, "
+            "pest control, irrigation, soil nutrition, and disease prevention. "
+            "You are expected to give precise, actionable, and simple advice suitable for farmers "
+            "with varying levels of expertise.\n"
+            "When answering, ensure that your responses are easy to understand, include important details, "
+            "and are framed in a way that helps farmers implement the advice directly.\n"
+            "Additionally, after answering the question, classify it into one of the following categories: "
+            "1. Disease Detection, 2. General Query, 3. Irrigation Related, or 4. Soil Nutrition.\n"
+            "Always respond as a knowledgeable farming expert, providing helpful solutions for real-world "
+            "farming challenges.\n"
+            "If you're uncertain about the question or its context, clarify before answering.\n\n"
+        )
+        
         # Build enhanced prompt with context
-        enhanced_prompt = prompt
+        enhanced_prompt = system_prompt
         context_info = []
         
         # Add RAG context if requested
         if use_rag and rag_manager:
             rag_context = rag_manager.create_rag_context(prompt, top_k=3)
             if rag_context:
-                enhanced_prompt = rag_context + enhanced_prompt
+                enhanced_prompt += rag_context
                 context_info.append("RAG context added")
         
         # Add chat history context
         if session_id and chat_manager:
             chat_context = chat_manager.get_conversation_context(session_id, max_messages=5)
             if chat_context:
-                enhanced_prompt = chat_context + enhanced_prompt
+                enhanced_prompt += chat_context
                 context_info.append("Chat history added")
+        
+        # Add the actual user prompt
+        enhanced_prompt += f"\nUser Question: {prompt}"
         
         # Call gRPC server for distributed processing
         try:
@@ -111,13 +131,16 @@ def process_query():
             grpc_request = load_balancer_pb2.AIRequest(
                 request_id=request_id,
                 prompt=enhanced_prompt,
-                timestamp=int(time.time())
+                assigned_model="",  # Server will distribute to clients
+                timestamp=int(time.time()),
+                images=images  # Pass images for vision models
             )
             
-            logger.info(f"🔄 Sending request {request_id} to gRPC server...")
+            logger.info(f"🔄 Sending request {request_id} to gRPC server (with {len(images)} images)...")
             
-            # Send request with timeout
-            grpc_response = stub.ProcessRequest(grpc_request, timeout=120)
+            # Send request without timeout - use ProcessRequest for distributed processing
+            # AI processing can take several minutes depending on model complexity
+            grpc_response = stub.ProcessRequest(grpc_request)
             
             if grpc_response.success:
                 response_text = grpc_response.response_text
