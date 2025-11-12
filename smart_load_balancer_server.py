@@ -418,9 +418,7 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
         result = f"{summary}\n\n"
         
         # Processing metadata in a clean, collapsible format
-        result += f"\n{'='*80}\n"
-        result += f"PROCESSING_DETAILS_START\n"
-        result += f"{'='*80}\n\n"
+        result += f"\nPROCESSING_DETAILS_START\n\n"
         
         # Group by model
         model_groups = {}
@@ -450,8 +448,6 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
         
         total_time = sum(resp['processing_time'] for resp in responses)
         result += f"⏱️  Total Processing: {total_time:.1f}s | Per Client: {total_time/len(responses):.1f}s\n\n"
-        
-        result += f"{'='*80}\n"
         result += f"✅ Distributed AI processing completed successfully\n"
         
         return result
