@@ -21,6 +21,9 @@ service LoadBalancer {
     
     // Reassign models (for dynamic rebalancing)
     rpc ReassignModels(Empty) returns (ReassignmentResponse);
+    
+    // Process distributed request (server-side only)
+    rpc ProcessRequest(AIRequest) returns (AIResponse);
 }
 
 // Empty message

@@ -4,6 +4,10 @@
 grpcio==1.60.0
 grpcio-tools==1.60.0
 
+# HTTP Wrapper
+Flask==3.0.0
+Flask-CORS==4.0.0
+
 # System monitoring
 psutil==5.9.6
 

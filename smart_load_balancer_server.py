@@ -204,6 +204,33 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
             timestamp=int(time.time())
         )
     
+    def ProcessRequest(self, request, context):
+        """Process distributed AI request across all clients"""
+        try:
+            prompt = request.prompt
+            response_text = self.process_distributed_query(prompt)
+            
+            return load_balancer_pb2.AIResponse(
+                request_id=request.request_id,
+                success=True,
+                response_text=response_text,
+                processing_time=0.0,
+                client_id="server",
+                model_used="distributed",
+                timestamp=int(time.time())
+            )
+        except Exception as e:
+            logger.error(f"Error processing request: {e}")
+            return load_balancer_pb2.AIResponse(
+                request_id=request.request_id,
+                success=False,
+                response_text=f"Error: {str(e)}",
+                processing_time=0.0,
+                client_id="server",
+                model_used="none",
+                timestamp=int(time.time())
+            )
+    
     def HealthCheck(self, request, context):
         """Health check endpoint"""
         active_models = len(set(client['assigned_model'] for client in self.clients.values() 
