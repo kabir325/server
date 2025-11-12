@@ -120,6 +120,11 @@ class SmartModelManager:
                         logger.info(f"   ⏭️  Skipping {model_name} (reserved for summarization)")
                         continue
                     
+                    # Skip llama3.2-vision - doesn't work properly for vision
+                    if 'llama3.2-vision' in model_name.lower() or 'llama3.2.*vision' in model_name.lower():
+                        logger.info(f"   ⏭️  Skipping {model_name} (vision not working, use Dhenu2 instead)")
+                        continue
+                    
                     model_info = self._parse_model_info(model_name)
                     if model_info:
                         models_found.append(model_info)
