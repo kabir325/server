@@ -254,14 +254,36 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
         if images is None:
             images = []
         
-        logger.info(f"🔄 Processing query: '{prompt}'")
-        logger.info(f"📊 Smart distribution to {len(self.clients)} clients")
+        # Filter clients based on image presence
         if images:
-            logger.info(f"🖼️  Processing with {len(images)} images")
+            # Only use vision-capable clients when images are present
+            vision_clients = {}
+            for client_id, client_info in self.clients.items():
+                model_info = self.model_manager.get_model_info(client_info['assigned_model'])
+                if model_info and model_info.supports_vision:
+                    vision_clients[client_id] = client_info
+            
+            if not vision_clients:
+                return ("❌ No vision-capable clients available to process images.\n\n"
+                       "Please ensure:\n"
+                       "1. Vision model is installed: ollama pull llama3.2-vision\n"
+                       "2. At least one client is connected\n"
+                       "3. Client is assigned a vision model (restart client to reassign)")
+            
+            # Use only vision clients for image queries
+            active_clients = vision_clients
+            logger.info(f"🔄 Processing query with images: '{prompt}'")
+            logger.info(f"🖼️  Using {len(active_clients)} vision-capable clients (out of {len(self.clients)} total)")
+            logger.info(f"📊 Images: {len(images)}")
+        else:
+            # Use all clients for text-only queries
+            active_clients = self.clients
+            logger.info(f"🔄 Processing text query: '{prompt}'")
+            logger.info(f"📊 Using all {len(active_clients)} clients")
         
-        # Show smart assignments
+        # Show smart assignments for active clients only
         model_groups = {}
-        for client_id, client_info in self.clients.items():
+        for client_id, client_info in active_clients.items():
             model = client_info['assigned_model']
             if model not in model_groups:
                 model_groups[model] = []
@@ -328,8 +350,8 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
             except Exception as e:
                 logger.error(f"❌ Error communicating with {client_id}: {e}")
         
-        # Start all client requests in parallel
-        for client_id, client_info in self.clients.items():
+        # Start all active client requests in parallel
+        for client_id, client_info in active_clients.items():
             thread = threading.Thread(
                 target=process_client_request,
                 args=(client_id, client_info),
@@ -431,7 +453,7 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
         # Model distribution table
         result += f"📊 System Performance\n\n"
         result += f"Models Used: {len(set(r['model'] for r in responses))}\n"
-        result += f"Total Clients: {len(responses)}\n"
+        result += f"Active Clients: {len(responses)}\n"
         result += f"Summary Method: {summary_method}\n\n"
         
         result += f"🤖 Model Performance:\n\n"
