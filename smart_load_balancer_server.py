@@ -388,22 +388,22 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
             summary_prompt += ("Create a unified response that combines the best insights from all models. "
                              "Focus on accuracy, completeness, and clarity.")
             
-            # Try local Ollama first
+            # Try local Ollama first - ALWAYS use gemma3:1b for fast text summarization
             try:
                 logger.info("🤖 Creating intelligent summary using local Ollama...")
                 
-                # Use the best available model for summarization
-                best_local_model = self._get_best_local_model()
+                # ALWAYS use gemma3:1b for summarization (fast, text-only)
+                summarization_model = "gemma3:1b"
                 
-                logger.info(f"🤖 Using {best_local_model} for summarization (no timeout)")
+                logger.info(f"🤖 Using {summarization_model} for text summarization")
                 result = subprocess.run([
-                    'ollama', 'run', best_local_model, summary_prompt
+                    'ollama', 'run', summarization_model, summary_prompt
                 ], capture_output=True, text=True, encoding='utf-8', errors='ignore')
                 
                 if result.returncode == 0 and result.stdout.strip():
                     summary = result.stdout.strip()
                     logger.info("✅ Intelligent summary created successfully")
-                    return self._format_final_response(responses, summary, "Local Ollama")
+                    return self._format_final_response(responses, summary, "gemma3:1b")
                 
             except Exception as e:
                 logger.warning(f"Local Ollama summarization failed: {e}")
@@ -416,22 +416,7 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
             logger.error(f"Error creating intelligent summary: {e}")
             return self._format_final_response(responses, "Summary generation failed.", "Error")
     
-    def _get_best_local_model(self) -> str:
-        """Get the best available local model for summarization"""
-        # Use gemma3:1b for fast summarization
-        summarization_model = "gemma3:1b"
-        
-        # Check if the model exists in available models
-        for model in self.model_manager.available_models:
-            if model.name == summarization_model:
-                return summarization_model
-        
-        # Fallback to the most complex model available
-        if self.model_manager.available_models:
-            best_model = max(self.model_manager.available_models, key=lambda x: x.complexity_score)
-            return best_model.name
-        
-        return "gemma3:1b"  # final fallback
+
     
     def _format_final_response(self, responses: List[Dict], summary: str, summary_method: str) -> str:
         """Format the final response with detailed information in a professional structure"""

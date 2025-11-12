@@ -114,6 +114,12 @@ class SmartModelManager:
                 parts = line.split()
                 if len(parts) >= 1:
                     model_name = parts[0]
+                    
+                    # Skip gemma3:1b - reserved for server summarization only
+                    if 'gemma3:1b' in model_name.lower():
+                        logger.info(f"   ⏭️  Skipping {model_name} (reserved for summarization)")
+                        continue
+                    
                     model_info = self._parse_model_info(model_name)
                     if model_info:
                         models_found.append(model_info)
@@ -136,7 +142,8 @@ class SmartModelManager:
         """Parse model name to extract parameter information"""
         try:
             # Check if model supports vision
-            supports_vision = 'vision' in model_name.lower()
+            # Dhenu2 models support vision, llama3.2-vision does NOT work properly
+            supports_vision = 'dhenu2' in model_name.lower()
             
             # Try to match against known patterns
             for pattern, param_extractor in self.known_models.items():
@@ -180,13 +187,13 @@ class SmartModelManager:
         return round((parameters / 1_000_000_000) * 2.0, 1)
     
     def _use_default_models(self) -> None:
-        """Use default model set if discovery fails"""
+        """Use default model set if discovery fails (gemma3:1b excluded - used only for summarization)"""
         self.available_models = [
-            ModelInfo("hf.co/mradermacher/Dhenu2-In-Llama3.2-3B-Instruct-GGUF:Q4_K_M", 3_000_000_000, 2.0, 0, supports_vision=False),
-            ModelInfo("hf.co/mradermacher/Dhenu2-In-Llama3.1-8B-Instruct-i1-GGUF:Q4_K_M", 8_000_000_000, 4.9, 0, supports_vision=False),
-            ModelInfo("llama3.2-vision:latest", 11_000_000_000, 7.8, 0, supports_vision=True),
+            ModelInfo("hf.co/mradermacher/Dhenu2-In-Llama3.2-3B-Instruct-GGUF:Q4_K_M", 3_000_000_000, 2.0, 0, supports_vision=True),  # Vision-capable
+            ModelInfo("hf.co/mradermacher/Dhenu2-In-Llama3.1-8B-Instruct-i1-GGUF:Q4_K_M", 8_000_000_000, 4.9, 0, supports_vision=True),  # Vision-capable
+            ModelInfo("llama3.2-vision:latest", 11_000_000_000, 7.8, 0, supports_vision=False),  # Not working for vision
         ]
-        logger.info("Using default model set for farming assistant with vision support")
+        logger.info("Using default model set for farming assistant (Dhenu2 models support vision)")
     
     def assign_models_to_clients(self, clients: Dict[str, Dict]) -> Dict[str, str]:
         """
