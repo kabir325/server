@@ -504,7 +504,7 @@ if __name__ == '__main__':
     print("🚀 Smart Load Balancer HTTP Wrapper v4.0")
     print("="*60)
     print()
-    print("📡 HTTP API available on http://localhost:5001")
+    print("📡 HTTP API available on http://localhost:5000")
     print("⚠️  Make sure smart_load_balancer_server.py is running on port 50051")
     print()
     print("New Features:")
@@ -534,4 +534,4 @@ if __name__ == '__main__':
     print("="*60)
     print()
     
-    app.run(host='0.0.0.0', port=5001, debug=False, threaded=True)
+    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)

@@ -64,6 +64,8 @@ class SmartModelManager:
             r'llama3\.1:(\d+)b': lambda m: int(m.group(1)) * 1_000_000_000,
             r'llama3:(\d+)b': lambda m: int(m.group(1)) * 1_000_000_000,
             r'llama2:(\d+)b': lambda m: int(m.group(1)) * 1_000_000_000,
+            r'llama3\.2-vision': lambda m: 11_000_000_000,  # Vision model
+            r'llama3\.2.*vision': lambda m: 11_000_000_000,  # Any llama3.2 vision variant
             
             # Mistral models
             r'mistral:(\d+)b': lambda m: int(m.group(1)) * 1_000_000_000,
@@ -73,13 +75,17 @@ class SmartModelManager:
             r'codellama:(\d+)b': lambda m: int(m.group(1)) * 1_000_000_000,
             
             # Gemma models
-            r'gemma:(\d+)b': lambda m: int(m.group(1)) * 1_000_000_000,
+            r'gemma3?:(\d+)b': lambda m: int(m.group(1)) * 1_000_000_000,  # gemma or gemma3
             
             # Phi models
             r'phi3:(\d+)b': lambda m: int(m.group(1)) * 1_000_000_000,
             
             # Qwen models
             r'qwen2:(\d+)b': lambda m: int(m.group(1)) * 1_000_000_000,
+            
+            # HuggingFace Dhenu2 models (with various suffixes like -i1-, -Instruct, etc.)
+            r'hf\.co/.*Dhenu2.*3B.*Instruct': lambda m: 3_000_000_000,
+            r'hf\.co/.*Dhenu2.*8B.*Instruct': lambda m: 8_000_000_000,
         }
         
         self.discover_available_models()
@@ -129,6 +135,9 @@ class SmartModelManager:
     def _parse_model_info(self, model_name: str) -> Optional[ModelInfo]:
         """Parse model name to extract parameter information"""
         try:
+            # Check if model supports vision
+            supports_vision = 'vision' in model_name.lower()
+            
             # Try to match against known patterns
             for pattern, param_extractor in self.known_models.items():
                 match = re.search(pattern, model_name.lower())
@@ -140,7 +149,8 @@ class SmartModelManager:
                         name=model_name,
                         parameters=parameters,
                         size_gb=size_gb,
-                        complexity_score=0  # Will be auto-calculated
+                        complexity_score=0,  # Will be auto-calculated
+                        supports_vision=supports_vision
                     )
             
             # If no pattern matches, try to extract numbers
@@ -153,7 +163,8 @@ class SmartModelManager:
                     name=model_name,
                     parameters=parameters,
                     size_gb=size_gb,
-                    complexity_score=0
+                    complexity_score=0,
+                    supports_vision=supports_vision
                 )
             
             logger.warning(f"Could not parse model: {model_name}")
@@ -171,9 +182,9 @@ class SmartModelManager:
     def _use_default_models(self) -> None:
         """Use default model set if discovery fails"""
         self.available_models = [
-            ModelInfo("hf.co/mradermacher/Dhenu2-In-Llama3.2-3B-Instruct-GGUF:Q4_K_M", 3_000_000_000, 6.0, 0, supports_vision=False),
-            ModelInfo("hf.co/mradermacher/Dhenu2-In-Llama3.1-8B-Instruct-GGUF:Q4_K_M", 8_000_000_000, 16.0, 0, supports_vision=False),
-            ModelInfo("llama3.2-vision", 11_000_000_000, 22.0, 0, supports_vision=True),
+            ModelInfo("hf.co/mradermacher/Dhenu2-In-Llama3.2-3B-Instruct-GGUF:Q4_K_M", 3_000_000_000, 2.0, 0, supports_vision=False),
+            ModelInfo("hf.co/mradermacher/Dhenu2-In-Llama3.1-8B-Instruct-i1-GGUF:Q4_K_M", 8_000_000_000, 4.9, 0, supports_vision=False),
+            ModelInfo("llama3.2-vision:latest", 11_000_000_000, 7.8, 0, supports_vision=True),
         ]
         logger.info("Using default model set for farming assistant with vision support")
     

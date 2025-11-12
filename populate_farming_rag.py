@@ -7,7 +7,7 @@ Run this to add initial farming documents to your RAG system
 import requests
 import json
 
-SERVER_URL = "http://localhost:5001"
+SERVER_URL = "http://localhost:5000"
 
 # Sample farming documents
 FARMING_DOCUMENTS = [
