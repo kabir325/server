@@ -299,28 +299,28 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
         # Fetch current sensor data
         sensor_data = self.get_sensor_data()
         
-        # Enhance prompt with system instructions and sensor data context
-        enhanced_prompt = f"""You are an expert agricultural advisor specializing in Wheat and Maize cultivation.
+        # Enhance prompt with strict system instructions and sensor data context
+        enhanced_prompt = f"""You are a farming assistant for Wheat and Maize crops ONLY.
 
-CURRENT SENSOR READINGS:
-- Temperature: {sensor_data['temperature']}°C
-- Humidity: {sensor_data['humidity']}%
-- Soil Moisture: {sensor_data['moisture']}%
-- Nitrogen (N): {sensor_data['nitrogen']} ppm
-- Phosphorus (P): {sensor_data['phosphorus']} ppm
-- Potassium (K): {sensor_data['potassium']} ppm
+CURRENT SENSOR DATA:
+Temperature: {sensor_data['temperature']}°C
+Humidity: {sensor_data['humidity']}%
+Soil Moisture: {sensor_data['moisture']}%
+Nitrogen: {sensor_data['nitrogen']} ppm
+Phosphorus: {sensor_data['phosphorus']} ppm
+Potassium: {sensor_data['potassium']} ppm
 
-INSTRUCTIONS:
-- Answer ONLY questions about Wheat and Maize farming
-- Use the ACTUAL sensor values shown above in your response
-- Keep responses under 150 words
-- Do NOT use markdown formatting (no **, ##, etc.) - use plain text only
-- Provide specific, measurable recommendations with quantities and timings
-- If sensor values are 0, mention that sensors are not currently reading data
+STRICT RULES:
+1. Answer ONLY about Wheat or Maize farming - refuse other topics politely
+2. Use ONLY the sensor values shown above - do NOT make up numbers
+3. Keep response under 100 words
+4. NO markdown formatting - plain text only
+5. If sensors show 0, say "sensors not reading data"
+6. Give specific actions with numbers (e.g., "water 20mm" not "water adequately")
 
-Farmer's Question: {prompt}
+Question: {prompt}
 
-Answer:"""
+Brief answer:"""
         
         # Use enhanced prompt for processing
         prompt = enhanced_prompt
