@@ -14,6 +14,7 @@ import socket
 from typing import Dict, List
 import subprocess
 import json
+import requests
 
 # Import generated gRPC files
 import load_balancer_pb2
@@ -34,6 +35,9 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
         self.server_specs = PerformanceEvaluator.get_system_specs()
         self.model_manager = SmartModelManager()
         self._lock = threading.Lock()
+        self.sensor_data_url = "http://localhost:5010/sensor-data"
+        self.cached_sensor_data = None
+        self.last_sensor_fetch = 0
         
         logger.info("🚀 Smart AI Load Balancer Server v3.0 Started")
         logger.info(f"Server Performance Score: {self.server_specs['performance_score']}")
@@ -246,6 +250,44 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
             active_models=active_models
         )
     
+    def get_sensor_data(self) -> Dict:
+        """Fetch current sensor data from Flask server with caching"""
+        # Cache for 5 seconds to avoid excessive requests
+        current_time = time.time()
+        if self.cached_sensor_data and (current_time - self.last_sensor_fetch) < 5:
+            return self.cached_sensor_data
+        
+        try:
+            response = requests.get(self.sensor_data_url, timeout=3)
+            if response.status_code == 200:
+                data = response.json()
+                self.cached_sensor_data = {
+                    'temperature': float(data.get('temperature', 0)),
+                    'humidity': float(data.get('humidity', 0)),
+                    'moisture': float(data.get('moisture', 0)),
+                    'nitrogen': float(data.get('nitrogen', 0)),
+                    'phosphorus': float(data.get('phosphorus', 0)),
+                    'potassium': float(data.get('potassium', 0)),
+                    'timestamp': data.get('timestamp', '')
+                }
+                self.last_sensor_fetch = current_time
+                logger.info(f"📊 Sensor data fetched: Temp={self.cached_sensor_data['temperature']}°C, "
+                          f"Moisture={self.cached_sensor_data['moisture']}%")
+                return self.cached_sensor_data
+        except Exception as e:
+            logger.warning(f"⚠️  Could not fetch sensor data: {e}")
+        
+        # Return default values if fetch fails
+        return {
+            'temperature': 0,
+            'humidity': 0,
+            'moisture': 0,
+            'nitrogen': 0,
+            'phosphorus': 0,
+            'potassium': 0,
+            'timestamp': ''
+        }
+    
     def process_distributed_query(self, prompt: str, images: List[str] = None) -> str:
         """Process a query across all connected clients with smart load balancing"""
         if not self.clients:
@@ -253,6 +295,35 @@ class SmartLoadBalancerServer(load_balancer_pb2_grpc.LoadBalancerServicer):
         
         if images is None:
             images = []
+        
+        # Fetch current sensor data
+        sensor_data = self.get_sensor_data()
+        
+        # Enhance prompt with system instructions and sensor data context
+        enhanced_prompt = f"""You are an expert agricultural advisor specializing in Wheat and Maize cultivation.
+
+CURRENT SENSOR READINGS:
+- Temperature: {sensor_data['temperature']}°C
+- Humidity: {sensor_data['humidity']}%
+- Soil Moisture: {sensor_data['moisture']}%
+- Nitrogen (N): {sensor_data['nitrogen']} ppm
+- Phosphorus (P): {sensor_data['phosphorus']} ppm
+- Potassium (K): {sensor_data['potassium']} ppm
+
+INSTRUCTIONS:
+- Answer ONLY questions about Wheat and Maize farming
+- Use the ACTUAL sensor values shown above in your response
+- Keep responses under 150 words
+- Do NOT use markdown formatting (no **, ##, etc.) - use plain text only
+- Provide specific, measurable recommendations with quantities and timings
+- If sensor values are 0, mention that sensors are not currently reading data
+
+Farmer's Question: {prompt}
+
+Answer:"""
+        
+        # Use enhanced prompt for processing
+        prompt = enhanced_prompt
         
         # Filter clients based on image presence
         if images:
